@@ -1,4 +1,4 @@
-name: Promote AdoPet Backend
+name: Promote AdoPet Backend🐕❤️
 
 on:
   push:
@@ -38,10 +38,8 @@ jobs:
         run: npm ci
 
       - name: Run tests
-        run: npm run test:ci
+        run: npm test
 
-      - name: Build
-        run: npm run build
 
   promote-production:
     name: Promote to Production
