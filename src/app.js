@@ -7,6 +7,7 @@ const checkJwt = require('./middleware/auth.middleware');
 const meRoutes = require('./routes/me.routes');
 const petRoutes = require('./routes/pet.routes');
 const organizationRoutes = require('./routes/organization.routes');
+const adminUserRoutes = require('./routes/admin-user.routes');
 
 const app = express();
 
@@ -43,5 +44,6 @@ app.use('/api/users', userRoutes);
 app.use('/api/me', meRoutes);app.use('/api/me', meRoutes);
 app.use('/api/pets', petRoutes);
 app.use('/api/organizations', organizationRoutes);
+app.use('/api/admin/users', adminUserRoutes);
 
 module.exports = app;
