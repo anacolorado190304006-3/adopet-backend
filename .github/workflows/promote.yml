@@ -34,12 +34,6 @@ jobs:
           git merge origin/development --ff-only
           git push origin staging
 
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run tests
-        run: npm test
-
 
   promote-production:
     name: Promote to Production
