@@ -1,0 +1,29 @@
+{
+  "name": "adopet-backend",
+  "version": "1.0.0",
+  "description": "Backend de AdoPet 🐕",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/anacolorado190304006-3/adopet-backend.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/anacolorado190304006-3/adopet-backend/issues"
+  },
+  "homepage": "https://github.com/anacolorado190304006-3/adopet-backend#readme",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.4",
+    "express": "^5.2.1",
+    "pg": "^8.23.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  }
+}
