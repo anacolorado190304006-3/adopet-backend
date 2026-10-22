@@ -11,7 +11,10 @@ const adminUserRoutes = require('./routes/admin-user.routes');
 
 const app = express();
 
-app.use(cors());
+app.disable('x-powered-by');
+app.use(cors({
+  origin: 'http://localhost:4200'
+}));
 app.use(express.json());
 
 app.get('/', (req, res) => {
