@@ -1,16 +1,18 @@
 name: Promote AdoPet Backend🐕❤️
 
+# Retained for audit history. Promotion now requires three reviewed PRs.
+# Disable workflow in GitHub and cancel old runs BEFORE merging this change.
 on:
-  push:
-    branches:
-      - development
+  workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
 
   promote-staging:
+    # Deliberately inert, including manual dispatches.
+    if: ${{ false }}
     name: Promote to Staging
     runs-on: ubuntu-latest
     environment: staging
@@ -36,6 +38,8 @@ jobs:
 
 
   promote-production:
+    # Deliberately inert, including manual dispatches.
+    if: ${{ false }}
     name: Promote to Production
     needs: promote-staging
     runs-on: ubuntu-latest
