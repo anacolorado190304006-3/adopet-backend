@@ -1,0 +1,153 @@
+# GitHub PR validation only. Does not deploy or push branches.
+trigger: none
+
+pr:
+  autoCancel: true
+  drafts: false
+  branches:
+    include:
+      - develop
+      - integration
+      - main
+
+pool:
+  vmImage: ubuntu-24.04
+
+variables:
+  nodeVersion: '22.23.3'
+  semgrepVersion: '1.185.0'
+  dependencyCheckVersion: '13.0.0'
+  gitleaksVersion: '8.30.1'
+
+jobs:
+  - job: Tests
+    displayName: Unit tests and coverage
+    timeoutInMinutes: 15
+    steps:
+      - checkout: self
+        persistCredentials: 'false'
+      - task: NodeTool@0
+        inputs:
+          versionSpec: $(nodeVersion)
+      - bash: npm ci --no-audit --no-fund
+        displayName: Install locked dependencies
+      - bash: npm run test:coverage
+        displayName: Tests and 70 percent coverage per HU file
+      - task: PublishTestResults@2
+        condition: succeededOrFailed()
+        inputs:
+          testResultsFormat: JUnit
+          testResultsFiles: test-results.xml
+          failTaskOnFailedTests: true
+          failTaskOnMissingResultsFile: true
+      - task: PublishCodeCoverageResults@2
+        condition: succeededOrFailed()
+        inputs:
+          summaryFileLocation: $(System.DefaultWorkingDirectory)/coverage/cobertura-coverage.xml
+          pathToSources: $(System.DefaultWorkingDirectory)
+          failIfCoverageEmpty: true
+      - task: PublishPipelineArtifact@1
+        condition: succeededOrFailed()
+        inputs:
+          targetPath: coverage
+          artifact: unit-coverage
+
+  - job: SAST
+    displayName: Semgrep SAST
+    timeoutInMinutes: 15
+    steps:
+      - checkout: self
+        persistCredentials: 'false'
+      - task: UsePythonVersion@0
+        inputs:
+          versionSpec: '3.12'
+      - bash: |
+          set -euo pipefail
+          mkdir -p reports/sast
+          python -m venv "$(Agent.TempDirectory)/semgrep"
+          "$(Agent.TempDirectory)/semgrep/bin/pip" install --no-cache-dir "semgrep==$(semgrepVersion)"
+        displayName: Install pinned Semgrep
+      - bash: |
+          set -euo pipefail
+          "$(Agent.TempDirectory)/semgrep/bin/semgrep" scan \
+            --config p/javascript --config p/nodejs \
+            --error --strict --metrics=off --disable-version-check \
+            --sarif-output reports/sast/semgrep.sarif \
+            --json-output reports/sast/semgrep.json src
+        displayName: Scan all backend source and fail on findings
+      - task: PublishPipelineArtifact@1
+        condition: succeededOrFailed()
+        inputs:
+          targetPath: reports/sast
+          artifact: sast-reports
+
+  - job: Dependencies
+    displayName: OWASP Dependency-Check
+    timeoutInMinutes: 60
+    steps:
+      - checkout: self
+        persistCredentials: 'false'
+      - task: NodeTool@0
+        inputs:
+          versionSpec: $(nodeVersion)
+      - task: JavaToolInstaller@0
+        inputs:
+          versionSpec: '21'
+          jdkArchitectureOption: x64
+          jdkSourceOption: PreInstalled
+      - bash: |
+          set -euo pipefail
+          mkdir -p reports/dependency-check "$(Pipeline.Workspace)/dependency-check-data"
+          curl --fail --location --retry 3 \
+            "https://github.com/dependency-check/DependencyCheck/releases/download/v$(dependencyCheckVersion)/dependency-check-$(dependencyCheckVersion)-release.zip" \
+            --output "$(Agent.TempDirectory)/dependency-check.zip"
+          echo "44d920d1ec03e948df862a253f0912782a31b9beee8a7c8895b9cb95760176ed  $(Agent.TempDirectory)/dependency-check.zip" | sha256sum --check
+          unzip -q "$(Agent.TempDirectory)/dependency-check.zip" -d "$(Agent.TempDirectory)/owasp"
+        displayName: Install verified Dependency-Check
+      - task: Cache@2
+        inputs:
+          key: 'dependency-check | "$(Agent.OS)" | "$(dependencyCheckVersion)" | package-lock.json'
+          restoreKeys: |
+            dependency-check | "$(Agent.OS)" | "$(dependencyCheckVersion)"
+          path: $(Pipeline.Workspace)/dependency-check-data
+      - bash: |
+          set -euo pipefail
+          python3 scripts/dependency-check.py \
+            "$(Agent.TempDirectory)/owasp/dependency-check/bin/dependency-check.sh" \
+            "$(Pipeline.Workspace)/dependency-check-data"
+        displayName: Scan production and development dependencies (CVSS >= 7 blocks)
+        env:
+          NVD_API_KEY: $(NVD_API_KEY)
+      - task: PublishPipelineArtifact@1
+        condition: succeededOrFailed()
+        inputs:
+          targetPath: reports/dependency-check
+          artifact: dependency-check-reports
+
+  - job: Secrets
+    displayName: Gitleaks secret detection
+    timeoutInMinutes: 15
+    steps:
+      - checkout: self
+        fetchDepth: '0'
+        persistCredentials: 'false'
+      - bash: |
+          set -euo pipefail
+          mkdir -p reports/secrets "$(Agent.TempDirectory)/gitleaks"
+          curl --fail --location --retry 3 \
+            "https://github.com/gitleaks/gitleaks/releases/download/v$(gitleaksVersion)/gitleaks_$(gitleaksVersion)_linux_x64.tar.gz" \
+            --output "$(Agent.TempDirectory)/gitleaks.tar.gz"
+          echo "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb  $(Agent.TempDirectory)/gitleaks.tar.gz" | sha256sum --check
+          tar -xzf "$(Agent.TempDirectory)/gitleaks.tar.gz" -C "$(Agent.TempDirectory)/gitleaks" gitleaks
+        displayName: Install verified Gitleaks
+      - bash: |
+          set -euo pipefail
+          "$(Agent.TempDirectory)/gitleaks/gitleaks" git . \
+            --log-opts="--all" --redact=100 --no-banner \
+            --report-format sarif --report-path reports/secrets/gitleaks.sarif
+        displayName: Scan full fetched Git history with redacted findings
+      - task: PublishPipelineArtifact@1
+        condition: succeededOrFailed()
+        inputs:
+          targetPath: reports/secrets
+          artifact: secret-reports
