@@ -8,6 +8,10 @@ La rama `feature/preparacion-flujo-existente` contiene toda HU-01 y el YAML actu
 Usarla como origen del primer PR; la feature original conserva el YAML anterior.
 Mantener main fuera de esta entrega y no crear develop/integration.
 
+Con [09-auto-promotion-pr.md](09-auto-promotion-pr.md), PR 2/3 pueden abrirse por
+el bot tras cada push humano de integración. Los cuatro gates y la revisión/merge
+siguen siendo obligatorios; la apertura del PR no acredita la ejecución de Azure.
+
 | PR | Origen → destino | Objetivo | HU / tareas |
 | --- | --- | --- | --- |
 | 1 | feature/preparacion-flujo-existente → development | Introducir HU-01 y configuración segura con promoción ya suspendida administrativamente | HU-01; T-01…T-06 y tarea de migración CI |

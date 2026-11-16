@@ -4,6 +4,10 @@ Fecha: 16 de noviembre de 2026, America/Bogota. Alcance: solo adopet-backend.
 **Estado: preparación en feature; no activada en GitHub/Azure.** Sustituye el plan
 de crear develop/integration y promover a main.
 
+> Ampliación posterior: [09-auto-promotion-pr.md](09-auto-promotion-pr.md) prepara
+> la apertura automática de PR 2/3 sin merge ni aprobación. En esa auditoría el
+> workflow antiguo ya figura disabled_manually; la tabla siguiente es histórica.
+
 ## Auditoría antes de editar
 
 Se revisaron status, ramas, remotos, fetch, historial reciente, historial de promote.yml,

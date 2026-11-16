@@ -1,5 +1,9 @@
 # Validación local y entrega de la migración
 
+> Snapshot anterior a la apertura automática de PR. Consultar
+> [09-auto-promotion-pr.md](09-auto-promotion-pr.md) para la ampliación y el estado
+> remoto posterior del workflow antiguo: disabled_manually.
+
 16 de noviembre de 2026. Rama: `feature/preparacion-flujo-existente`.
 Base HU: `462ab0e3f9e60cfe330ffd2b1719eb6e982439af`.
 
