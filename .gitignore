@@ -427,3 +427,9 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+# Local validation output (Guide 4)
+coverage/
+reports/
+test-results.xml
+.tools/
