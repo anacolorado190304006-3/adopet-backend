@@ -1,0 +1,33 @@
+name: Open promotion PR
+
+on:
+  push:
+    branches:
+      - development
+      - staging
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: auto-promotion-pr-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  open-pr:
+    if: ${{ !github.event.deleted }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout workflow helpers
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Open PR only when needed
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const openPromotionPr = require('./scripts/auto-promotion-pr.js');
+            await openPromotionPr({ github, context, core });

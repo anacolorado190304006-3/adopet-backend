@@ -1,4 +1,5 @@
 const service = require('../services/pet.service');
+const { PetValidationError } = require('../validators/pet.validator');
 
 const getPets = async (req, res) => {
   try {
@@ -32,6 +33,10 @@ const createPet = async (req, res) => {
     const pet = await service.createPet(req.body);
     res.status(201).json(pet);
   } catch (error) {
+    if (error instanceof PetValidationError) {
+      return res.status(400).json({ message: error.message, errors: error.errors });
+    }
+
     console.error(error);
     res.status(500).json({ message: 'Error creando mascota' });
   }
