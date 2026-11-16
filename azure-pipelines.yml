@@ -6,9 +6,9 @@ pr:
   drafts: false
   branches:
     include:
-      - develop
-      - integration
-      - main
+      - development
+      - staging
+      - production
 
 pool:
   vmImage: ubuntu-24.04
