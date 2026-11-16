@@ -1,5 +1,9 @@
 # Auditoría inicial — Guía 4
 
+> Registro histórico. La migración autorizada ahora se documenta en
+> [07-migracion-flujo-existente.md](07-migracion-flujo-existente.md).
+> No ejecutar el plan anterior de crear develop/integration ni usar main como destino.
+
 Fecha: 16 de noviembre de 2026 (America/Bogota). Alcance exclusivo: `adopet-backend`.
 
 ## Git y sincronización

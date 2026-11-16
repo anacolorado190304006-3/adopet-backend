@@ -68,7 +68,8 @@ durante la revisión funcional manual, antes de integrar.
 - Implementación mínima en las capas existentes, sin dependencias de runtime nuevas.
 - Casos válidos, inválidos, límites y errores inesperados probados sin DB/Auth0 reales.
 - Gates preparados y fallos propagados: SAST, Dependency-Check, cobertura y secretos.
-- Workflow de promoción intacto; solo commits/push de feature; documentación revisada.
+- Promoción automática retirada según `07-migracion-flujo-existente.md`;
+  solo commits/push de feature durante preparación; documentación revisada.
 - Revisión funcional del contrato, checks obligatorios activos, tres PR aprobados,
   ejecuciones Azure exitosas y evidencias vinculadas: **pendientes de trabajo manual**.
 

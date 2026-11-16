@@ -37,31 +37,39 @@ flowchart TD
 JSON malformado lo rechaza Express antes del controlador; su parser no se modifica.
 La validación de la HU no consulta PostgreSQL ni Auth0.
 
-## Flujos independientes de ramas
+## Migración controlada y tres PR
 
 ```mermaid
 flowchart TB
-  subgraph EXISTENTE["Promoción existente - sin modificaciones"]
-    D["development"] -->|"push dispara GitHub Actions"| J1["Job staging: merge ff-only"]
-    J1 --> ST["staging"]
-    ST -->|"segundo job depende del primero"| J2["Environment production: aprobación"]
-    J2 -->|"merge ff-only"| P["production"]
+  subgraph ANTES["Observado en GitHub antes de activar la migración"]
+    D0["Push a development"] --> OLD["Workflow antiguo activo"]
+    OLD -->|ff-only| S0["staging"]
+    S0 -->|segundo job y environment| P0["production"]
   end
-  subgraph ACADEMICO["Propuesta académica - PR manuales pendientes"]
-    F["feature/hu-01-validacion-mascotas"] --> PR1["PR 1: cuatro validaciones obligatorias"]
-    PR1 -->|"solo con checks y revisión aprobados"| DEV["develop"]
-    DEV --> PR2["PR 2: cuatro validaciones obligatorias"]
-    PR2 -->|"solo con checks y revisión aprobados"| INT["integration"]
-    INT --> PR3["PR 3: cuatro validaciones obligatorias"]
-    PR3 -->|"solo con checks y revisión aprobados"| MAIN["main"]
-    G["SAST + OWASP Dependency-Check + cobertura + secretos"] -.-> PR1
-    G -.-> PR2
-    G -.-> PR3
-    BLOCK["Cualquier fallo bloquea integración mediante checks requeridos"] -.-> G
+  subgraph PREPARACION["Prerequisito administrativo - pendiente"]
+    OFF["Deshabilitar workflow en GitHub"] --> CANCEL["Cancelar ejecuciones antiguas"]
+    CANCEL --> VERIFY["Verificar estado deshabilitado y cero ejecuciones pendientes"]
+    VERIFY --> AZ["Conectar Azure y exigir checks en GitHub"]
   end
+  subgraph PROPUESTA["Después de completar los prerequisitos"]
+    F["feature/preparacion-flujo-existente con HU y YAML actualizado"] --> G1["PR 1: cuatro gates y revisión"]
+    G1 --> D["development"]
+    D --> G2["PR 2: cuatro gates y revisión"]
+    G2 --> S["staging"]
+    S --> G3["PR 3: cuatro gates y revisión"]
+    G3 --> P["production"]
+    RULE["SAST + OWASP + cobertura >= 70% + Gitleaks"] -.-> G1
+    RULE -.-> G2
+    RULE -.-> G3
+    BLOCK["Fallo o falta de ejecución: bloquear integración"] -.-> RULE
+    INERT["promote.yml conservado: sin push, jobs false, token read"] -.-> D
+  end
+  AZ --> F
 ```
 
-No hay conexión automática entre ambos flujos. Los gates del diagrama académico
-describen la configuración por realizar en GitHub/Azure; el YAML por sí solo no
-activa la protección. `main` existe desde el inicio; develop e integration deben
-crearse manualmente desde la base auditada, sin tocar development.
+El gráfico ANTES es evidencia del estado observado, no una ruta permitida durante
+la entrega. No existe una promoción automática en el flujo propuesto. El workflow
+continúa activo en GitHub hasta que un administrador complete la suspensión.
+La rama original de HU conserva su YAML anterior: usar la rama de preparación
+como origen de PR 1 o actualizar explícitamente la original antes de usarla.
+Ver `07-migracion-flujo-existente.md` para activación, rollback y verificaciones.

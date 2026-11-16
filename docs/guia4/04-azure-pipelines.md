@@ -1,13 +1,13 @@
 # Azure Pipelines — preparación y operación
 
-Estado: YAML preparado para GitHub. **No se ha ejecutado en Azure ni se han creado
-el proyecto, la conexión, las políticas o los PR.** Los resultados locales están
-en `RESUMEN-TRABAJO-NOCTURNO.md`; no sustituyen las evidencias de Azure.
+Estado: YAML preparado para GitHub. **Esta auditoría no acredita ejecuciones Azure,
+conexión ni políticas activas. No se han creado PR durante este trabajo.** Resultados
+actuales en `08-validacion-migracion.md`; no sustituyen evidencias de Azure.
 
 ## Estructura de `azure-pipelines.yml`
 
 `trigger: none` evita ejecuciones CI por push. `pr.branches.include` contiene solo
-develop, integration y main, sin filtros de rutas que pudieran omitir validaciones.
+development, staging y production, sin filtros de rutas que pudieran omitir validaciones.
 Los PR draft no se ejecutan hasta marcarlos listos. Hay cuatro jobs independientes:
 un fallo de cualquiera hace fallar el pipeline. No existe `continueOnError`.
 No hay comandos de despliegue, merge ni push. Checkout sin credenciales persistidas.
@@ -69,51 +69,32 @@ de JavaScript con `node --check`. SAST es una validación distinta.
 - CVSS >= 7 es el umbral inicial explícito. Hallazgos menores siguen en el reporte
   y requieren seguimiento; no se excluyen ni se declaran corregidos.
 
-## Pasos manuales para el 17 de noviembre de 2026
+## Activación manual controlada
 
-1. En Azure DevOps, crear proyecto **AdoPet — Guía 4**, proceso **Agile**. Invitar
-   integrantes con los permisos/licencias necesarios. Registrar evidencia de membresía.
-2. Crear EP-01 → FE-01 → HU-01 → T-01…T-06 conforme a `02-historia-usuario.md`.
-   Asignar responsables y estimaciones; los códigos locales no son IDs de Azure.
-3. En GitHub, crear develop e integration desde
-   `816406a38ee9a985dd8ce2daf02f3e409e538453`. Mantener main existente. No tocar
-   development, staging ni production. Confirmar diferencias antes de cada PR.
-4. En Azure Pipelines → New pipeline → GitHub, instalar/autorizar Azure Pipelines
-   GitHub App solo para este repositorio. Seleccionar **Existing Azure Pipelines YAML**,
-   rama `feature/hu-01-validacion-mascotas`, archivo `/azure-pipelines.yml`.
-   Evitar la opción que crea un YAML o commit en la rama predeterminada development.
-5. Nombrar el pipeline `AdoPet-Guia4`; configurar `NVD_API_KEY` secreta en Variables.
-   Autorizar la conexión de servicio solo al pipeline. Confirmar acceso al pool
-   hospedado y cuota de trabajos paralelos; cuatro jobs pueden ejecutarse en serie
-   si solo hay un agente disponible. Revisar que la interfaz no sobrescriba triggers YAML.
-6. No habilitar secretos para builds de forks no confiables. Revisar cambios al YAML
-   y scripts antes de ejecutar código de PR con secretos. Estos PR usan ramas del mismo repo.
-7. Crear PR 1 sin fusionarlo, según `05-plan-pull-requests.md`. Dejar ejecutar el
-   pipeline para conocer el nombre exacto del check publicado por la aplicación Azure.
-8. En GitHub Settings → Rulesets/Branches, configurar para **develop, integration,
-   main**: exigir PR, revisión, checks de Azure realmente observados y rama actualizada;
-   restringir pushes directos, impedir force push y eliminación y no permitir bypass
-   que eluda los gates académicos. No alterar las reglas del flujo de despliegue.
-9. El check requerido debe representar el pipeline completo (o todos sus checks
-   obligatorios si la integración los separa). No seleccionar solamente Tests.
-   Verificar que la fuente sea Azure Pipelines y que el check esté en el SHA vigente.
-10. Probar bloqueo: en una rama temporal feature de ensayo, introducir una prueba
-    fallida y abrir un PR académico; capturar integración bloqueada. Revertir el fallo
-    mediante commit normal, volver a ejecutar y capturar éxito. Nunca usar secretos
-    reales como fixture ni integrar el ensayo fallido. También puede demostrarse la
-    cobertura por debajo del umbral sin modificar permanentemente el umbral.
-11. Solo cuando políticas/checks estén activos y verdes, revisar e integrar PR 1.
-    Luego crear PR 2 y PR 3 secuencialmente; cada uno necesita su propia ejecución
-    sobre el commit combinado y sus propias evidencias. Conservar la rama feature
-    hasta terminar la trazabilidad y la evaluación.
-12. Vincular commits, URLs de PR y ejecuciones a HU/Tareas en Azure Boards mediante
-    la integración GitHub o vínculos manuales. No inventar `AB#` ni reescribir commits.
+El orden obligatorio está en [07-migracion-flujo-existente.md](07-migracion-flujo-existente.md).
+Primero suspender el workflow antiguo en GitHub y cancelar/verificar sus ejecuciones.
+Esta preparación no ha realizado esas acciones administrativas.
 
-El código vive en GitHub: configurar políticas de Azure Repos no impide merges aquí.
-YAML fallido impide integración **solo cuando** GitHub exige el check correspondiente.
-Azure usa la configuración de PR según su integración con GitHub; comprobar en cada
-run la rama, el YAML utilizado y el SHA del merge de validación. No copiar el pipeline
-a development para intentar activar los PR académicos.
+Crear el pipeline desde **Existing Azure Pipelines YAML**, repositorio AdoPet,
+rama `feature/preparacion-flujo-existente`, ruta `/azure-pipelines.yml`. Esa rama
+incluye HU-01 y la migración. La rama original `feature/hu-01-validacion-mascotas`
+mantiene los filtros antiguos y **no debe usarse sin actualizarla**.
+No crear develop/integration ni usar main como destino de esta guía.
+
+Configurar `NVD_API_KEY` secreta, pool y conexión GitHub. Tras obtener el nombre
+real del check, exigirlo en GitHub para development, staging y production, además
+de revisión, actualización de rama y prohibición de bypass/push directo/force push.
+Un check requerido sin ejecución debe bloquear; no quitarlo para destrabar el PR.
+
+Azure valida el commit combinado del PR y su YAML combinado: revisar el SHA,
+la ruta del YAML, los tres filtros y los cuatro jobs de la ejecución real.
+Seleccionar una rama predeterminada para ejecuciones manuales no fuerza el YAML
+de todos los PR. Una ejecución manual de feature no sustituye el check del PR.
+
+La compilación real en Azure, las políticas y la prueba de bloqueo siguen pendientes.
+No cambiar filtros, omitir jobs ni aceptar `skipped`/`neutral` como prueba de que
+se ejecutaron las cuatro validaciones. No habilitar secretos para forks no confiables.
+Revisar cambios de YAML y scripts porque la rama origen puede alterar el pipeline.
 
 ## Fuentes oficiales
 

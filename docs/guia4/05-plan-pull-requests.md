@@ -1,80 +1,58 @@
-# Plan de tres Pull Requests — pendientes de creación manual
+# Plan vigente de tres PR — ramas existentes
 
-No se creó ni fusionó ningún PR durante la preparación. Azure Boards y checks aún
-requieren configuración. Ninguna URL o ID de PR se presenta como existente.
+Sustituye la propuesta develop → integration → main. No se ha creado ni fusionado
+ningún PR. Completar primero la suspensión administrativa y las comprobaciones de
+[07-migracion-flujo-existente.md](07-migracion-flujo-existente.md).
 
-## Preparación común
+La rama `feature/preparacion-flujo-existente` contiene toda HU-01 y el YAML actualizado.
+Usarla como origen del primer PR; la feature original conserva el YAML anterior.
+Mantener main fuera de esta entrega y no crear develop/integration.
 
-Crear develop e integration desde `816406a38ee9a985dd8ce2daf02f3e409e538453`,
-no desde la feature terminada. main ya existe en el commit inicial. Se conserva
-development como rama predeterminada y no se cambia el workflow de promoción.
-Abrir los PR secuencialmente: el siguiente después de integrar el anterior.
-Comprobar siempre destino exacto; GitHub podría sugerir development por defecto.
+| PR | Origen → destino | Objetivo | HU / tareas |
+| --- | --- | --- | --- |
+| 1 | feature/preparacion-flujo-existente → development | Introducir HU-01 y configuración segura con promoción ya suspendida administrativamente | HU-01; T-01…T-06 y tarea de migración CI |
+| 2 | development → staging | Validar integración de la misma HU con una nueva ejecución de Azure | HU-01; T-03, T-04, T-06 |
+| 3 | staging → production | Consolidar entrega tras una tercera ejecución independiente | HU-01; T-03, T-04, T-05, T-06 |
 
-En los tres PR, exigir SAST, Dependency-Check, pruebas/cobertura >= 70 % por archivo
-y Gitleaks, con check requerido de Azure sobre el SHA vigente. Si falla un gate,
-corregir en feature mediante commits normales, nunca rebajar umbrales o saltar políticas.
-Antes de integrar, comprobar diff y que `.github/workflows/promote.yml` no tenga cambios.
+## Validaciones y aprobación comunes
 
-## PR 1 — Validar el registro de mascotas
+- Semgrep sin hallazgos bloqueantes ni errores de análisis.
+- OWASP Dependency-Check completo, sin CVSS >= 7 ni errores operativos.
+- Pruebas aprobadas y cobertura >= 70 % por archivo HU en las cuatro métricas.
+- Gitleaks sin secretos en el historial descargado.
+- Check Azure requerido en GitHub sobre el SHA vigente; cuatro jobs ejecutados,
+  no omitidos. Revisión aprobada y conversaciones resueltas.
+- Workflow antiguo deshabilitado en GitHub, sin runs pendientes; árbol combinado
+  sin trigger push, jobs con `if: ${{ false }}` y token de lectura.
+- Si falta o falla una validación, detenerse. No rebajar gates ni umbrales.
 
-| Campo | Plan |
-| --- | --- |
-| Origen → destino | `feature/hu-01-validacion-mascotas → develop` |
-| Objetivo | Incorporar validación de POST /api/pets, pruebas y preparación de la Guía 4 |
-| HU | HU-01; reemplazar por enlace real de Azure Boards |
-| Tareas | T-01 auditoría, T-02 implementación, T-03 pruebas, T-04 pipeline, T-05 documentos; T-06 ejecución manual |
-| Validaciones | Los cuatro gates comunes, contrato 201/400/500, JWT preservado, diff del lockfile |
-| Aprobación | Revisor asignado, CA de HU confirmados, checks obligatorios verdes y contrato cotejado con esquema SQL |
-| Evidencias | URL/ID PR, diff, commits, vínculo HU/Tareas, aprobación, SHA, run Azure y cuatro reportes |
-| Riesgos | Supuestos por falta de DDL, dependencias moderadas pendientes, credencial NVD, posible selección accidental de development |
+## Evidencias y riesgos por PR
 
-Descripción sugerida: «POST /api/pets enviaba datos inválidos directamente a
-PostgreSQL y respondía 500. Ahora valida presencia y tipos antes de persistir,
-responde 400 con campos inválidos y conserva 201/500. Incluye pruebas y pipeline
-académico; consultar resultados locales y limitaciones en docs/guia4».
+| PR | Evidencias propias | Riesgos específicos |
+| --- | --- | --- |
+| 1 | disabled_manually antes del merge, cero runs antiguos pendientes, diff HU/migración, YAML combinado, run, cuatro reportes, revisión, work items y SHA | Carrera con run antiguo; feature con filtros incorrectos; contrato SQL pendiente; falta de NVD |
+| 2 | SHA/YAML del merge, nuevo run, cuatro artefactos, aprobación y comparación con PR 1 | Restaurar workflow antiguo en conflictos; reutilizar run de PR 1 |
+| 3 | SHA/YAML del merge, nuevo run, cuatro artefactos, aprobación y cierre | Confundir environment con revisión PR; restaurar push/write |
 
-## PR 2 — Validar integración académica
+Los tres destinos parten del mismo SHA auditado; no hay el diff histórico adicional
+del plan contra main. Si cambian, repetir la auditoría. Abrir PR 2 después de PR 1
+y PR 3 después de PR 2. Preferir merge commits entre ramas duraderas para conservar
+ascendencia; no merges locales hacia destinos ni pushes directos. Revalidar cambios
+de origen o destino.
 
-| Campo | Plan |
-| --- | --- |
-| Origen → destino | `develop → integration` |
-| Objetivo | Promover la HU aprobada al entorno lógico de integración académica |
-| HU | La misma HU-01, sin crear una historia duplicada |
-| Tareas | T-03 regresión, T-04 gates y T-06 evidencias/aprobación |
-| Validaciones | Nueva ejecución de los cuatro gates sobre el merge de este PR; verificar que incluye PR 1 |
-| Aprobación | PR 1 integrado, sin cambios inesperados ni conflictos, políticas activas y revisión aprobada |
-| Evidencias | PR y run propios, SHA, cuatro reportes, relación con HU y PR 1, aprobación |
-| Riesgos | integration creada desde base incorrecta, PR vacío, divergencia o confusión con staging |
+Descripciones sugeridas:
 
-Descripción sugerida: «Promueve a integration el registro validado de mascotas de
-HU-01, aprobado en PR 1. Se reejecutan las cuatro validaciones sobre este merge.
-No activa el workflow development → staging → production».
+- PR 1: «Valida POST /api/pets antes de persistir y conserva 201/500. Retira promoción
+  automática y configura cuatro gates Azure para development/staging/production».
+- PR 2: «Promueve HU-01 a staging mediante PR revisado y cuatro validaciones nuevas».
+- PR 3: «Consolida HU-01 en production tras revisión y cuatro validaciones de este PR».
 
-## PR 3 — Consolidar entrega académica
-
-| Campo | Plan |
-| --- | --- |
-| Origen → destino | `integration → main` |
-| Objetivo | Consolidar la entrega académica y su trazabilidad |
-| HU | HU-01 vinculada a los tres PR |
-| Tareas | T-03 regresión, T-04 gates, T-05 revisión documental y T-06 cierre de evidencias |
-| Validaciones | Nueva ejecución de cuatro gates, revisión completa del backend histórico y configuración |
-| Aprobación | PR 2 integrado, revisión completa del diff contra main, checks vigentes exitosos y evidencias completas |
-| Evidencias | URL/ID y SHA propios, diff, revisión, run Azure, cuatro reportes y checklist completado |
-| Riesgos | main sigue en commit inicial: el diff incluye el backend histórico además de HU-01; main académico no equivale a producción |
-
-Descripción sugerida: «Consolida la entrega de Guía 4 en main. Esta rama conserva
-el commit inicial, por lo que el diff incluye el backend existente y HU-01.
-La aprobación requiere revisar ambos alcances y los cuatro reportes de este PR».
-
-## Registro para completar mañana
-
-| PR | URL / ID | Work items | SHA validado | Run Azure | Revisor | Resultado |
+| PR | URL/ID | HU/Tareas reales | SHA validado | Run Azure | Revisor | Estado |
 | --- | --- | --- | --- | --- | --- | --- |
 | 1 | Pendiente | Pendiente | Pendiente | Pendiente | Por asignar | No creado |
 | 2 | Pendiente | Pendiente | Pendiente | Pendiente | Por asignar | No creado |
 | 3 | Pendiente | Pendiente | Pendiente | Pendiente | Por asignar | No creado |
 
-Las aprobaciones y políticas deben impedir integración ante fallo; un reporte local
-verde no autoriza omitir el run de ninguno de los tres PR.
+Adjuntar aceptación docente del mapeo Develop=development, Integration=staging,
+main=production. Se conservan tres PR y cuatro gates, pero cambian los nombres
+literales de la guía; no afirmar aceptación sin evidencia.

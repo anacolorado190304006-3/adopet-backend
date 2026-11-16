@@ -1,5 +1,10 @@
 # Resumen de trabajo — Guía 4
 
+> Registro histórico de la preparación inicial. El nuevo plan de ramas y la
+> modificación autorizada de promote.yml están en
+> [07-migracion-flujo-existente.md](07-migracion-flujo-existente.md).
+> No seguir las instrucciones anteriores de crear develop/integration o promover a main.
+
 Fecha: 16 de noviembre de 2026, America/Bogota. Preparación local y publicación en
 `feature/hu-01-validacion-mascotas`. **Azure y los tres PR no se han ejecutado/creado.**
 

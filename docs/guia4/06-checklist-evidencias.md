@@ -13,13 +13,13 @@ No hay imágenes ni ejecuciones Azure inventadas.
 | Historia de usuario | HU-01, criterios, estimación, prioridad y responsable | Pendiente |
 | Tareas y asignaciones | T-01…T-06, horas, estado, responsables y vínculos | Pendiente |
 | Commits | Hashes y mensajes reales de feature, relación con work items | Pendiente de captura; Git disponible |
-| Ramas | Dos flujos diferenciados; origen y destino de cada PR | Pendiente |
+| Ramas | Flujo feature → development → staging → production y SHAs | Pendiente |
 | YAML | azure-pipelines.yml, cuatro jobs y filtros de PR | Pendiente de captura; archivo preparado |
 | Configuración de pipeline | Conexión GitHub, YAML, pool y variable NVD marcada secreta sin valor visible | Pendiente |
 | Políticas de protección | Revisión, checks obligatorios y restricciones para los tres destinos | Pendiente |
-| PR 1 | feature → develop, diff, HU, revisión, estado y SHA | Pendiente |
-| PR 2 | develop → integration, diff, HU, revisión, estado y SHA | Pendiente |
-| PR 3 | integration → main, diff histórico, HU, revisión, estado y SHA | Pendiente |
+| PR 1 | feature de preparación → development, diff, HU, revisión, estado y SHA | Pendiente |
+| PR 2 | development → staging, diff, HU, revisión, estado y SHA | Pendiente |
+| PR 3 | staging → production, diff, HU, revisión, estado y SHA | Pendiente |
 | Ejecuciones exitosas | Un run Azure propio por cada PR, cuatro jobs verdes | Pendiente |
 | Reportes SAST | Reglas, hallazgos, alcance, SARIF/JSON y run por PR | Pendiente en Azure |
 | Reportes OWASP | Versión, actualización NVD, componentes, CVSS y HTML/JSON/SARIF por PR | Pendiente |
@@ -27,6 +27,18 @@ No hay imágenes ni ejecuciones Azure inventadas.
 | Detección de secretos | Gitleaks completo, resultado y reporte redactado por PR | Pendiente en Azure |
 | Integración bloqueada | PR de ensayo con validación fallida y botón de merge bloqueado por política | Pendiente |
 | Recuperación del gate | Commit de corrección y nuevo run exitoso | Pendiente |
+
+## Evidencias adicionales de la migración
+
+- [ ] Workflow ID 368470090 deshabilitado en GitHub antes del primer merge.
+- [ ] Ejecuciones antiguas canceladas/completadas, incluidas las que esperaban aprobación.
+- [ ] Comparación de SHA de las ramas antes y después de la suspensión.
+- [ ] Diff del workflow: sin push, ambos jobs bloqueados y token de lectura.
+- [ ] YAML efectivo y SHA del merge de cada PR, con los tres destinos nuevos.
+- [ ] Cuatro jobs realmente ejecutados por PR; no aceptar skipped como evidencia.
+- [ ] Prueba negativa de bloqueo y nueva ejecución tras corregir el fallo.
+- [ ] Aprobación docente del mapeo de nombres de ramas de la Guía 4.
+- [ ] Plan de rollback revisado sin reactivar la promoción automática.
 
 ## Cómo conservar evidencia
 
