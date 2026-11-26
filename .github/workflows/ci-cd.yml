@@ -10,9 +10,9 @@ on:
 permissions:
   contents: read
 
-# Keep running deployments intact. The deploy job also serializes its destination.
+# Every commit gets CI; only the deploy job serializes the shared destination.
 concurrency:
-  group: backend-ci-${{ github.workflow }}-${{ github.ref }}
+  group: backend-ci-${{ github.workflow }}-${{ github.ref }}-${{ github.sha }}
   cancel-in-progress: false
 
 env:
