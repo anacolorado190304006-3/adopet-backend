@@ -8,14 +8,18 @@ const meRoutes = require('./routes/me.routes');
 const petRoutes = require('./routes/pet.routes');
 const organizationRoutes = require('./routes/organization.routes');
 const adminUserRoutes = require('./routes/admin-user.routes');
+const { loadConfig } = require('./config/runtime');
+const healthRoutes = require('./routes/health.routes');
+const releaseVersion = require('./config/release');
 
 const app = express();
 
 app.disable('x-powered-by');
 app.use(cors({
-  origin: 'http://localhost:4200'
+  origin: loadConfig().origins
 }));
 app.use(express.json());
+app.use('/health', healthRoutes({ pool, version: releaseVersion() }));
 
 app.get('/', (req, res) => {
   res.json({
@@ -33,7 +37,7 @@ app.get('/api/health', async (req, res) => {
       time: result.rows[0].now
     });
   } catch (error) {
-    console.error('Error conectando a PostgreSQL:', error);
+    console.error('Error conectando a PostgreSQL');
 
     res.status(500).json({
       status: 'error',

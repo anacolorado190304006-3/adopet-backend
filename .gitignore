@@ -433,3 +433,10 @@ coverage/
 reports/
 test-results.xml
 .tools/
+
+# Runtime secrets, generated deployment artifacts and external-only academic material
+.env.*
+!.env.example
+/dist/
+/release.json
+/docs/guia5/
