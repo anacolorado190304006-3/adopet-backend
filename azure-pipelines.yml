@@ -7,16 +7,16 @@ trigger:
 parameters:
   - name: enableAzureDeployment
     type: boolean
-    default: false
+    default: true
   - name: azureServiceConnection
     type: string
-    default: UNCONFIGURED
+    default: adopet-integration-wif
   - name: azureAppName
     type: string
     default: adopet-backend-integration
   - name: azureHealthUrl
     type: string
-    default: UNCONFIGURED
+    default: https://adopet-backend-integration-g4exgggcgnhahzbg.brazilsouth-01.azurewebsites.net
 
 pr:
   autoCancel: true
