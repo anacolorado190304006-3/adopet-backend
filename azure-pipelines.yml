@@ -1,5 +1,22 @@
-# GitHub PR validation only. Does not deploy or push branches.
-trigger: none
+# CI for published commits and PRs. Deployment is opt-in and branch restricted.
+trigger:
+  branches:
+    include:
+      - '*'
+
+parameters:
+  - name: enableAzureDeployment
+    type: boolean
+    default: true
+  - name: azureServiceConnection
+    type: string
+    default: adopet-integration-wif
+  - name: azureAppName
+    type: string
+    default: adopet-backend-integration
+  - name: azureHealthUrl
+    type: string
+    default: https://adopet-backend-integration-g4exgggcgnhahzbg.brazilsouth-01.azurewebsites.net
 
 pr:
   autoCancel: true
@@ -90,6 +107,8 @@ jobs:
       - task: NodeTool@0
         inputs:
           versionSpec: $(nodeVersion)
+      - bash: npm ci --ignore-scripts --no-audit --no-fund
+        displayName: Install locked dependencies for OWASP analysis
       - task: JavaToolInstaller@0
         inputs:
           versionSpec: '21'
@@ -151,3 +170,73 @@ jobs:
         inputs:
           targetPath: reports/secrets
           artifact: secret-reports
+
+  - job: Package
+    displayName: Package runtime artifact
+    dependsOn: [Tests, SAST, Dependencies, Secrets]
+    condition: succeeded()
+    timeoutInMinutes: 15
+    steps:
+      - checkout: self
+        persistCredentials: 'false'
+      - task: NodeTool@0
+        inputs:
+          versionSpec: $(nodeVersion)
+      - bash: npm ci --omit=dev --no-audit --no-fund
+        displayName: Install locked runtime dependencies
+      - bash: |
+          set -euo pipefail
+          python3 scripts/package-deployment.py --output "$(Build.ArtifactStagingDirectory)/backend.zip" --commit "$SOURCE_COMMIT"
+        displayName: Build deployment ZIP
+        env:
+          SOURCE_COMMIT: $(Build.SourceVersion)
+      - task: PublishPipelineArtifact@1
+        inputs:
+          targetPath: $(Build.ArtifactStagingDirectory)/backend.zip
+          artifact: backend
+
+  # Exclude protected deployment resources before stage checks for non-staging CI.
+  - ${{ if and(eq(parameters.enableAzureDeployment, true), eq(variables['Build.SourceBranch'], 'refs/heads/staging'), in(variables['Build.Reason'], 'IndividualCI', 'BatchedCI')) }}:
+    - deployment: DeployAzure
+      displayName: Deploy verified integration artifact
+      dependsOn: [Tests, SAST, Dependencies, Secrets, Package]
+      condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/staging'), in(variables['Build.Reason'], 'IndividualCI', 'BatchedCI'))
+      timeoutInMinutes: 20
+      environment: adopet-azure-integration
+      strategy:
+        runOnce:
+          deploy:
+            steps:
+              - checkout: self
+                persistCredentials: 'false'
+              - task: NodeTool@0
+                inputs:
+                  versionSpec: $(nodeVersion)
+              - download: current
+                artifact: backend
+              - bash: node scripts/assert-deployment.js azure
+                displayName: Verify deployment configuration and current branch commit
+                env:
+                  DEPLOY_ENABLED: 'true'
+                  SOURCE_BRANCH: $(Build.SourceBranch)
+                  SOURCE_COMMIT: $(Build.SourceVersion)
+                  SOURCE_REPOSITORY: $(Build.Repository.Name)
+                  CI_EVENT: $(Build.Reason)
+                  AZURE_SERVICE_CONNECTION: ${{ parameters.azureServiceConnection }}
+                  DEPLOY_APP_NAME: ${{ parameters.azureAppName }}
+                  DEPLOY_HEALTH_URL: ${{ parameters.azureHealthUrl }}
+              - task: AzureWebApp@1
+                displayName: Deploy runtime ZIP
+                inputs:
+                  azureSubscription: ${{ parameters.azureServiceConnection }}
+                  appType: webAppLinux
+                  appName: ${{ parameters.azureAppName }}
+                  runtimeStack: NODE|22-lts
+                  package: $(Pipeline.Workspace)/backend/backend.zip
+                  startUpCommand: npm start
+              - bash: node scripts/check-health.js
+                displayName: Verify process liveness and deployed commit
+                env:
+                  DEPLOY_HEALTH_CHECK: liveness
+                  DEPLOY_HEALTH_URL: ${{ parameters.azureHealthUrl }}
+                  SOURCE_COMMIT: $(Build.SourceVersion)
