@@ -3,8 +3,9 @@ async function assertDeployment(platform, env = process.env, fetchImpl = fetch) 
   const allowedEvents = platform === 'azure' ? ['IndividualCI', 'BatchedCI'] : ['push'];
   if (!branch || env.DEPLOY_ENABLED !== 'true' || env.SOURCE_BRANCH !== `refs/heads/${branch}` ||
       !allowedEvents.includes(env.CI_EVENT)) throw new Error('Deployment is not authorized for this event');
-  if (!/^[a-z0-9][a-z0-9-]{1,58}[a-z0-9]$/.test(env.DEPLOY_APP_NAME || '')) {
-    throw new Error('Deployment application name is missing or invalid');
+  const targetApp = platform === 'azure' ? 'adopet-backend-integration' : 'adopet-backend-production';
+  if (env.DEPLOY_APP_NAME !== targetApp) {
+    throw new Error('Deployment application does not match the authorized destination');
   }
   const health = new URL(env.DEPLOY_HEALTH_URL);
   if (health.protocol !== 'https:' || health.username || health.password || health.search || health.hash || health.pathname !== '/') {
