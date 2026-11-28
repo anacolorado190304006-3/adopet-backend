@@ -90,6 +90,8 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
+      - name: Install locked dependencies for OWASP analysis
+        run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Require independent NVD secret
         env:
           NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
