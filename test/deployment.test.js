@@ -14,12 +14,36 @@ const latest = async () => ({ ok: true, json: async () => ({ object: { sha: comm
 test('allows only configured Azure staging CI', async () => {
   await assertDeployment('azure', environment, latest);
 });
-test('allows configured GitHub production push with OIDC identifiers', async () => {
-  await assertDeployment('github', {
-    ...environment, SOURCE_BRANCH: 'refs/heads/production', CI_EVENT: 'push',
-    DEPLOY_APP_NAME: 'adopet-backend-production',
-    AZURE_CLIENT_ID: 'fixture-client', AZURE_TENANT_ID: 'fixture-tenant', AZURE_SUBSCRIPTION_ID: 'fixture-subscription'
-  }, latest);
+const githubEnvironment = {
+  ...environment, SOURCE_BRANCH: 'refs/heads/production', CI_EVENT: 'push',
+  DEPLOY_APP_NAME: 'adopet-backend-production',
+  AZURE_WEBAPP_PUBLISH_PROFILE: '<publishData>synthetic-test-fixture</publishData>'
+};
+test('allows GitHub production push with a publish profile and no OIDC identifiers', async () => {
+  await assertDeployment('github', githubEnvironment, latest);
+});
+for (const [label, change] of [
+  ['missing profile', { AZURE_WEBAPP_PUBLISH_PROFILE: undefined }],
+  ['empty profile', { AZURE_WEBAPP_PUBLISH_PROFILE: '' }],
+  ['blank profile', { AZURE_WEBAPP_PUBLISH_PROFILE: '   ' }],
+  ['wrong target', { DEPLOY_APP_NAME: 'adopet-backend-integration' }],
+  ['wrong branch', { SOURCE_BRANCH: 'refs/heads/staging' }],
+  ['manual event', { CI_EVENT: 'workflow_dispatch' }],
+  ['PR event', { CI_EVENT: 'pull_request' }],
+  ['disabled deployment', { DEPLOY_ENABLED: 'false' }]
+]) {
+  test(`GitHub deployment rejects ${label} before network access`, async () => {
+    await assert.rejects(assertDeployment('github', { ...githubEnvironment, ...change },
+      () => assert.fail('No network expected')));
+  });
+}
+test('GitHub profile does not replace Azure service connection or bypass current SHA verification', async () => {
+  await assert.rejects(assertDeployment('azure', {
+    ...environment, AZURE_SERVICE_CONNECTION: undefined,
+    AZURE_WEBAPP_PUBLISH_PROFILE: githubEnvironment.AZURE_WEBAPP_PUBLISH_PROFILE
+  }, () => assert.fail('No network expected')));
+  await assert.rejects(assertDeployment('github', githubEnvironment,
+    async () => ({ ok: true, json: async () => ({ object: { sha: 'b'.repeat(40) } }) })));
 });
 for (const change of [
   { DEPLOY_ENABLED: 'false' }, { CI_EVENT: 'PullRequest' }, { CI_EVENT: 'Manual' },
