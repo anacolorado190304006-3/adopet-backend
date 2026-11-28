@@ -12,22 +12,26 @@ const { loadConfig } = require('./config/runtime');
 const healthRoutes = require('./routes/health.routes');
 const releaseVersion = require('./config/release');
 
+const requirePersistence = require('./middleware/persistence.middleware');
+const config = loadConfig();
 const app = express();
 
 app.disable('x-powered-by');
 app.use(cors({
-  origin: loadConfig().origins
+  origin: config.origins
 }));
 app.use(express.json());
-app.use('/health', healthRoutes({ pool, version: releaseVersion() }));
+app.use('/health', healthRoutes({ pool, version: releaseVersion(), demoMode: config.demoMode }));
 
 app.get('/', (req, res) => {
   res.json({
-    message: 'AdoPet Backend funcionando correctamente 🐾'
+    message: config.demoMode
+      ? 'AdoPet Backend en demostración; persistencia no disponible'
+      : 'AdoPet Backend funcionando correctamente 🐾'
   });
 });
 
-app.get('/api/health', async (req, res) => {
+app.get('/api/health', requirePersistence, async (req, res) => {
   try {
     const result = await pool.query('SELECT NOW()');
 
