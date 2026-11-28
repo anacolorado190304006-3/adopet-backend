@@ -107,6 +107,8 @@ jobs:
       - task: NodeTool@0
         inputs:
           versionSpec: $(nodeVersion)
+      - bash: npm ci --ignore-scripts --no-audit --no-fund
+        displayName: Install locked dependencies for OWASP analysis
       - task: JavaToolInstaller@0
         inputs:
           versionSpec: '21'
