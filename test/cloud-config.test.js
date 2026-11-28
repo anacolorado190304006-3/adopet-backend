@@ -48,3 +48,25 @@ test('multiple explicit origins and platform PORT are supported', () => {
   assert.equal(config.port, 8080);
   assert.equal(config.origins.length, 2);
 });
+
+test('demo mode is off by default and accepts only explicit boolean strings', () => {
+  assert.equal(loadConfig(production).demoMode, false);
+  for (const DEMO_MODE of ['1', 'yes', 'TRUE', '']) {
+    assert.throws(() => loadConfig({ ...production, DEMO_MODE }), /DEMO_MODE/);
+  }
+});
+test('production demo permits absent persistence and Management API settings, never absent JWT settings', () => {
+  const demo = {
+    NODE_ENV: 'production', DEMO_MODE: 'true',
+    CORS_ORIGINS: production.CORS_ORIGINS,
+    AUTH0_AUDIENCE: production.AUTH0_AUDIENCE,
+    AUTH0_ISSUER_BASE_URL: production.AUTH0_ISSUER_BASE_URL
+  };
+  assert.equal(loadConfig(demo).demoMode, true);
+  assert.equal(loadConfig(demo).database.host, undefined);
+  for (const key of ['AUTH0_AUDIENCE', 'AUTH0_ISSUER_BASE_URL', 'CORS_ORIGINS']) {
+    assert.throws(() => loadConfig({ ...demo, [key]: '' }), new RegExp(key));
+  }
+  assert.throws(() => loadConfig({ ...demo, DEMO_MODE: 'false' }), /Missing required/);
+  assert.throws(() => loadConfig({ ...demo, DB_SSL: 'false' }), /verified TLS/);
+});

@@ -3,12 +3,16 @@ require('dotenv').config({ quiet: true });
 
 function loadConfig(env = process.env) {
   const production = env.NODE_ENV === 'production';
+  const demoSetting = env.DEMO_MODE ?? 'false';
+  if (!['true', 'false'].includes(demoSetting)) throw new Error('Invalid DEMO_MODE');
+  const demoMode = demoSetting === 'true';
   if (production) {
-    for (const name of [
-      'DB_HOST', 'DB_NAME', 'DB_USER', 'DB_PASSWORD', 'CORS_ORIGINS',
-      'AUTH0_AUDIENCE', 'AUTH0_ISSUER_BASE_URL', 'AUTH0_DOMAIN',
+    const required = ['CORS_ORIGINS', 'AUTH0_AUDIENCE', 'AUTH0_ISSUER_BASE_URL'];
+    if (!demoMode) required.push(
+      'DB_HOST', 'DB_NAME', 'DB_USER', 'DB_PASSWORD', 'AUTH0_DOMAIN',
       'AUTH0_MGMT_CLIENT_ID', 'AUTH0_MGMT_CLIENT_SECRET', 'AUTH0_CONNECTION'
-    ]) {
+    );
+    for (const name of required) {
       if (!env[name]?.trim()) throw new Error(`Missing required configuration: ${name}`);
     }
   }
@@ -40,7 +44,7 @@ function loadConfig(env = process.env) {
     catch { throw new Error('Cannot read DB_SSL_CA_FILE'); }
   }
   return {
-    port, host: '0.0.0.0', origins,
+    port, host: '0.0.0.0', origins, demoMode,
     auth: { audience: env.AUTH0_AUDIENCE || 'https://api.adopet.com', issuerBaseURL, tokenSigningAlg: 'RS256' },
     database: {
       host: env.DB_HOST, port: dbPort, database: env.DB_NAME,
