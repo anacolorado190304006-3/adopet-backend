@@ -195,14 +195,10 @@ jobs:
       cancel-in-progress: false
     permissions:
       contents: read
-      id-token: write
     env:
       DEPLOY_ENABLED: ${{ vars.ENABLE_GITHUB_DEPLOYMENT }}
       DEPLOY_APP_NAME: ${{ vars.AZURE_APP_NAME }}
       DEPLOY_HEALTH_URL: ${{ vars.AZURE_HEALTH_URL }}
-      AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
-      AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
-      AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
       SOURCE_BRANCH: ${{ github.ref }}
       SOURCE_COMMIT: ${{ github.sha }}
       SOURCE_REPOSITORY: ${{ github.repository }}
@@ -222,14 +218,11 @@ jobs:
         run: node scripts/assert-deployment.js github
         env:
           GITHUB_TOKEN: ${{ github.token }}
-      - uses: azure/login@7184910d9eb2b1c5e48f7073824a90609bb9b6d6 # v2
-        with:
-          client-id: ${{ env.AZURE_CLIENT_ID }}
-          tenant-id: ${{ env.AZURE_TENANT_ID }}
-          subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
+          AZURE_WEBAPP_PUBLISH_PROFILE: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
       - uses: azure/webapps-deploy@02a81bead70021f5284939794bcec79c271ab383 # v3
         with:
           app-name: ${{ env.DEPLOY_APP_NAME }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
           package: dist/backend.zip
       - name: Verify process liveness and deployed commit
         run: node scripts/check-health.js

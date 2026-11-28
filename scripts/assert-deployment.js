@@ -11,10 +11,14 @@ async function assertDeployment(platform, env = process.env, fetchImpl = fetch) 
   if (health.protocol !== 'https:' || health.username || health.password || health.search || health.hash || health.pathname !== '/') {
     throw new Error('Invalid deployment health origin');
   }
-  const names = platform === 'azure' ? ['AZURE_SERVICE_CONNECTION'] :
-    ['AZURE_CLIENT_ID', 'AZURE_TENANT_ID', 'AZURE_SUBSCRIPTION_ID'];
+  const names = platform === 'azure' ? ['AZURE_SERVICE_CONNECTION'] : [];
   for (const name of names) {
     if (!env[name] || /UNCONFIGURED|\$\(|[<>]/.test(env[name])) throw new Error(`Missing deployment setting: ${name}`);
+  }
+  // Validate presence only; azure/webapps-deploy parses and authenticates the profile.
+  // Do not include its contents in errors, command arguments or logs.
+  if (platform === 'github' && !env.AZURE_WEBAPP_PUBLISH_PROFILE?.trim()) {
+    throw new Error('Missing deployment setting: AZURE_WEBAPP_PUBLISH_PROFILE');
   }
   if (!/^[a-f0-9]{40}$/.test(env.SOURCE_COMMIT || '') ||
       !/^[\w.-]+\/[\w.-]+$/.test(env.SOURCE_REPOSITORY || '')) throw new Error('Invalid source metadata');
