@@ -21,7 +21,7 @@ c8 exige 70 % por archivo en líneas, funciones, sentencias y ramas de `pet.vali
 
 ## Configuración de producción
 
-Con `NODE_ENV=production` se exigen:
+En modo normal con `NODE_ENV=production` se exigen:
 
 | Variables | Uso |
 | --- | --- |
@@ -37,11 +37,19 @@ No registrar secretos ni copiarlos al ZIP. Configurarlos mediante los ajustes se
 
 El arranque rechaza una configuración incompleta o metadatos de release ausentes en producción. SIGTERM/SIGINT drenan HTTP y el pool de PostgreSQL, con límite de diez segundos.
 
+## Demostración sin persistencia
+
+`DEMO_MODE=true` permite desplegar el proceso sin configurar PostgreSQL ni Auth0 Management API. Por defecto es `false`. Es una declaración explícita de persistencia no disponible: las operaciones de BD responden HTTP 503, no se ejecutan consultas ni acciones administrativas de Auth0 y no se generan datos ficticios. Al desactivarlo se recuperan las validaciones y funcionalidades normales.
+
+La configuración de JWT sigue siendo obligatoria en producción: `AUTH0_AUDIENCE` y `AUTH0_ISSUER_BASE_URL` deben corresponder a la API/tenant reales. Las rutas protegidas conservan su middleware JWT; solicitudes sin token válido reciben 401 antes de la barrera de persistencia. No usar valores `example.invalid` en App Service. `CORS_ORIGINS` debe ser un origen HTTPS real.
+
+Ajustes de la demostración en ambas apps: `NODE_ENV=production`, `DEMO_MODE=true`, JWT real, CORS HTTPS y `SCM_DO_BUILD_DURING_DEPLOYMENT=false`. No suministrar credenciales ficticias de BD/M2M. Dejar PORT a la plataforma. Configurar Health check de App Service con `/health/live`: readiness permanece 503 porque no se ofrece persistencia.
+
 ## Salud y artefacto
 
 - `GET /health/live`: HTTP 200 si el proceso sirve HTTP; no consulta PostgreSQL.
-- `GET /health/ready`: ejecuta `SELECT 1`; responde 200 o 503 e incluye `version`, el SHA del artefacto.
-- `GET /api/health` conserva su contrato anterior.
+- `GET /health/ready`: ejecuta `SELECT 1`; responde 200 o 503 (siempre 503 en demo, sin intentar una conexión) e incluye `version`, el SHA del artefacto.
+- `GET /api/health` conserva su contrato en modo normal y responde 503 en demo.
 
 Readiness no prueba el esquema, las operaciones de negocio ni Auth0. Deben verificarse adicionalmente con datos y credenciales de prueba autorizados.
 
@@ -66,18 +74,20 @@ Para Azure App Service Linux, seleccionar Node 22 LTS y `npm start`, desplegar e
 
 Azure y GitHub requieren cada uno su secreto `NVD_API_KEY`; el secreto de Azure no se comparte automáticamente. El wrapper Python lo suministra mediante un archivo temporal privado. No añadirlo a las variables del backend. Los reportes se publican como artefactos, incluso después de fallos cuando están disponibles.
 
-| Sistema | Rama para CD | Destino propuesto | Activación |
+| Sistema | Rama para CD | Destino | Activación |
 | --- | --- | --- | --- |
-| Azure Pipelines | staging, solo CI por push | App Service de integración independiente | Parámetro `enableAzureDeployment`, por defecto false |
-| GitHub Actions | production, solo push | Otro App Service de demostración | Variable de repositorio `ENABLE_GITHUB_DEPLOYMENT=true`, ausente por defecto |
+| Azure Pipelines | staging, solo CI por push | `adopet-backend-integration` | Parámetro `enableAzureDeployment`, por defecto false |
+| GitHub Actions | production, solo push | `adopet-backend-production` | Variable de repositorio `ENABLE_GITHUB_DEPLOYMENT=true`, ausente por defecto |
 
-No hay CD en PR, feature ni workflow dispatch. Los jobs de despliegue dependen de los cuatro gates y del artefacto del mismo run. Antes de desplegar se verifican configuración y SHA actual de la rama; después se comprueban readiness y SHA servido. Una URL que sirve la versión anterior no produce éxito.
+No hay CD en PR, feature ni workflow dispatch. Los jobs de despliegue dependen de los cuatro gates y del artefacto del mismo run. Antes de desplegar se verifican configuración y SHA actual de la rama; después se comprueban liveness y SHA servido, con `DEPLOY_HEALTH_CHECK=liveness` explícito en ambos YAML. Esto acredita despliegue del proceso, no funcionamiento integral. El script conserva readiness por defecto si no se selecciona liveness. Una URL que sirve la versión anterior no produce éxito.
 
 Antes de activar Azure: crear el Environment `adopet-azure-integration` con aprobación, control de rama staging y bloqueo exclusivo; crear una conexión ARM con identidad federada y permisos restringidos a la aplicación. Configurar los valores predeterminados `azureServiceConnection`, `azureAppName` y `azureHealthUrl` mediante revisión. Activar el parámetro en ese mismo cambio revisado; la activación no se obtiene con una ejecución manual, porque la condición excluye `Manual`.
 
 Antes de activar GitHub: crear el Environment `adopet-github-demo` con aprobación y restricción a production. Configurar la identidad federada de Azure con sujeto `repo:anacolorado190304006-3/adopet-backend:environment:adopet-github-demo`. Añadir las variables `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `AZURE_APP_NAME` y `AZURE_HEALTH_URL`. Conceder `id-token: write` solo al job de CD, como establece el workflow. Mantener el interruptor ENABLE en el repositorio para que esté disponible al evaluar la condición del job.
 
 Usar aplicaciones distintas. Si solo se dispone de una, habilitar un único sistema de CD a la vez y retirar el acceso de despliegue del otro; la concurrencia de GitHub no coordina ejecuciones de Azure.
+
+El preflight rechaza usar la app de integración desde GitHub o la app de producción desde Azure. Ambas están en `adopet-backend-integration_group`, Brazil South. Copiar sus Default hostnames reales del Portal; no deducir la URL a partir del nombre.
 
 El bot existente abre PR development → staging → production; no integra ni despliega. El workflow antiguo de promoción debe permanecer inerte y deshabilitado. En los PR creados por `GITHUB_TOKEN`, comprobar el aviso de aprobación de workflows y aprobar su ejecución como usuario con escritura. Comprobar por separado los checks de Azure sobre el commit del PR. Una ejecución de push o manual no sustituye la validación del PR.
 

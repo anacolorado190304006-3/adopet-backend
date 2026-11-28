@@ -13,7 +13,7 @@ parameters:
     default: UNCONFIGURED
   - name: azureAppName
     type: string
-    default: UNCONFIGURED
+    default: adopet-backend-integration
   - name: azureHealthUrl
     type: string
     default: UNCONFIGURED
@@ -233,7 +233,8 @@ jobs:
                   package: $(Pipeline.Workspace)/backend/backend.zip
                   startUpCommand: npm start
               - bash: node scripts/check-health.js
-                displayName: Verify database readiness and deployed commit
+                displayName: Verify process liveness and deployed commit
                 env:
+                  DEPLOY_HEALTH_CHECK: liveness
                   DEPLOY_HEALTH_URL: ${{ parameters.azureHealthUrl }}
                   SOURCE_COMMIT: $(Build.SourceVersion)

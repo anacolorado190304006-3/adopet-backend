@@ -229,5 +229,7 @@ jobs:
         with:
           app-name: ${{ env.DEPLOY_APP_NAME }}
           package: dist/backend.zip
-      - name: Verify database readiness and deployed commit
+      - name: Verify process liveness and deployed commit
         run: node scripts/check-health.js
+        env:
+          DEPLOY_HEALTH_CHECK: liveness
