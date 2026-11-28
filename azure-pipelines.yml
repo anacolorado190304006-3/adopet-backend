@@ -195,8 +195,8 @@ jobs:
           targetPath: $(Build.ArtifactStagingDirectory)/backend.zip
           artifact: backend
 
-  # Compile-time exclusion avoids requiring a service connection while CD is off.
-  - ${{ if eq(parameters.enableAzureDeployment, true) }}:
+  # Exclude protected deployment resources before stage checks for non-staging CI.
+  - ${{ if and(eq(parameters.enableAzureDeployment, true), eq(variables['Build.SourceBranch'], 'refs/heads/staging'), in(variables['Build.Reason'], 'IndividualCI', 'BatchedCI')) }}:
     - deployment: DeployAzure
       displayName: Deploy verified integration artifact
       dependsOn: [Tests, SAST, Dependencies, Secrets, Package]
