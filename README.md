@@ -76,12 +76,12 @@ Azure y GitHub requieren cada uno su secreto `NVD_API_KEY`; el secreto de Azure 
 
 | Sistema | Rama para CD | Destino | Activación |
 | --- | --- | --- | --- |
-| Azure Pipelines | staging, solo CI por push | `adopet-backend-integration` | Parámetro `enableAzureDeployment`, por defecto false |
+| Azure Pipelines | staging, solo CI por push | `adopet-backend-integration` | Parámetro `enableAzureDeployment`, por defecto true; restringido a staging |
 | GitHub Actions | production, solo push | `adopet-backend-production` | Variable de repositorio `ENABLE_GITHUB_DEPLOYMENT=true`, ausente por defecto |
 
 No hay CD en PR, feature ni workflow dispatch. Los jobs de despliegue dependen de los cuatro gates y del artefacto del mismo run. Antes de desplegar se verifican configuración y SHA actual de la rama; después se comprueban liveness y SHA servido, con `DEPLOY_HEALTH_CHECK=liveness` explícito en ambos YAML. Esto acredita despliegue del proceso, no funcionamiento integral. El script conserva readiness por defecto si no se selecciona liveness. Una URL que sirve la versión anterior no produce éxito.
 
-Antes de activar Azure: crear el Environment `adopet-azure-integration` con aprobación, control de rama staging y bloqueo exclusivo; crear una conexión ARM con identidad federada y permisos restringidos a la aplicación. Configurar los valores predeterminados `azureServiceConnection`, `azureAppName` y `azureHealthUrl` mediante revisión. Activar el parámetro en ese mismo cambio revisado; la activación no se obtiene con una ejecución manual, porque la condición excluye `Manual`.
+Azure usa la conexión federada `adopet-integration-wif` y el Environment `adopet-azure-integration`. Los parámetros de despliegue están habilitados para integration; autorizar la conexión para este pipeline y conservar las aprobaciones, control de rama staging y bloqueo exclusivo del Environment. Una ejecución manual no despliega, porque la condición excluye `Manual`.
 
 Antes de activar GitHub: conservar el Environment `adopet-github-demo` con aprobación y restricción a production. Descargar el Publish Profile exclusivamente de `adopet-backend-production` y guardar todo su XML en el secreto del Environment `AZURE_WEBAPP_PUBLISH_PROFILE`. El despliegue requiere SCM Basic Auth Publishing Credentials habilitado en esa app; FTP no es necesario. No guardar el perfil en el repositorio, logs ni artefactos.
 
@@ -89,7 +89,12 @@ Configurar las variables `AZURE_APP_NAME=adopet-backend-production` y `AZURE_HEA
 
 Usar aplicaciones distintas. Si solo se dispone de una, habilitar un único sistema de CD a la vez y retirar el acceso de despliegue del otro; la concurrencia de GitHub no coordina ejecuciones de Azure.
 
-El preflight rechaza usar la app de integración desde GitHub o la app de producción desde Azure. Ambas están en `adopet-backend-integration_group`, Brazil South. Copiar sus Default hostnames reales del Portal; no deducir la URL a partir del nombre.
+El preflight rechaza usar la app de integración desde GitHub o la app de producción desde Azure. Ambas están en `adopet-backend-integration_group`, Brazil South. Usar los orígenes HTTPS sin rutas:
+
+- Azure `azureHealthUrl`: `https://adopet-backend-integration-g4exgggcgnhahzbg.brazilsouth-01.azurewebsites.net`.
+- GitHub `AZURE_HEALTH_URL`: `https://adopet-backend-production-h0d6a7agdtddfrft.brazilsouth-01.azurewebsites.net`.
+
+GitHub mapea `AZURE_HEALTH_URL` a `DEPLOY_HEALTH_URL`. El script añade `/health/live`; no incluir esa ruta en las variables.
 
 El bot existente abre PR development → staging → production; no integra ni despliega. El workflow antiguo de promoción debe permanecer inerte y deshabilitado. En los PR creados por `GITHUB_TOKEN`, comprobar el aviso de aprobación de workflows y aprobar su ejecución como usuario con escritura. Comprobar por separado los checks de Azure sobre el commit del PR. Una ejecución de push o manual no sustituye la validación del PR.
 
